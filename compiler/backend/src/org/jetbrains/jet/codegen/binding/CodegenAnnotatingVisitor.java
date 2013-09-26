@@ -27,6 +27,7 @@ import org.jetbrains.asm4.Type;
 import org.jetbrains.jet.codegen.SamCodegenUtil;
 import org.jetbrains.jet.lang.descriptors.*;
 import org.jetbrains.jet.lang.descriptors.impl.ClassDescriptorImpl;
+import org.jetbrains.jet.lang.diagnostics.DiagnosticUtils;
 import org.jetbrains.jet.lang.psi.*;
 import org.jetbrains.jet.lang.resolve.BindingContext;
 import org.jetbrains.jet.lang.resolve.BindingTrace;
@@ -155,7 +156,7 @@ class CodegenAnnotatingVisitor extends JetVisitorVoid {
     @Override
     public void visitEnumEntry(@NotNull JetEnumEntry enumEntry) {
         ClassDescriptor descriptor = bindingContext.get(CLASS, enumEntry);
-        assert descriptor != null;
+        assert descriptor != null : "No descriptor for enum entry " + enumEntry.getName() + DiagnosticUtils.atLocation(enumEntry);
 
         boolean trivial = enumEntry.getDeclarations().isEmpty();
         if (!trivial) {

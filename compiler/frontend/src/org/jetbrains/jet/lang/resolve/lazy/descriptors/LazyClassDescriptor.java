@@ -95,6 +95,7 @@ public class LazyClassDescriptor extends ClassDescriptorBase implements LazyDesc
         if (classLikeInfo.getCorrespondingClassOrObject() != null) {
             this.resolveSession.getTrace().record(BindingContext.CLASS, classLikeInfo.getCorrespondingClassOrObject(), this);
         }
+        this.resolveSession.getTrace().record(BindingContext.FQNAME_TO_CLASS_DESCRIPTOR, DescriptorUtils.getFqName(this).toSafe(), this);
 
         this.originalClassInfo = classLikeInfo;
         this.declarationProvider = resolveSession.getDeclarationProviderFactory().getClassMemberDeclarationProvider(classLikeInfo);

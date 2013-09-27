@@ -66,7 +66,6 @@ public class ForceResolveUtil {
 
     public static void forceResolveAllContents(@NotNull JetScope scope) {
         forceResolveAllContents(scope.getAllDescriptors());
-        forceResolveAllContents(scope.getObjectDescriptors());
     }
 
     public static void forceResolveAllContents(@NotNull Collection<JetType> types) {

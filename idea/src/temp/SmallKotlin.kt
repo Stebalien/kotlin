@@ -16,6 +16,8 @@
 
 package temp
 
-public class Small() {
-    fun test(hi : String) {}
+public class Small1: Small() {
+    override fun test(hi: String) {
+        super<Small>.test(hi)
+    }
 }

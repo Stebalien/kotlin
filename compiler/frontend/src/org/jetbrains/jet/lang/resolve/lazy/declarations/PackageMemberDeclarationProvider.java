@@ -18,6 +18,8 @@ package org.jetbrains.jet.lang.resolve.lazy.declarations;
 
 import com.intellij.psi.NavigatablePsiElement;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.jet.lang.descriptors.PackageFragmentDescriptor;
+import org.jetbrains.jet.lang.resolve.BindingTrace;
 import org.jetbrains.jet.lang.resolve.name.FqName;
 import org.jetbrains.jet.lang.resolve.name.Name;
 
@@ -31,4 +33,6 @@ public interface PackageMemberDeclarationProvider extends DeclarationProvider {
 
     @NotNull
     Collection<NavigatablePsiElement> getPackageDeclarations(FqName fqName);
+
+    void onPackageFragmentCreated(@NotNull PackageFragmentDescriptor packageFragmentDescriptor, @NotNull BindingTrace trace);
 }

@@ -51,6 +51,8 @@ public class LazyPackageFragmentDescriptor extends DeclarationDescriptorImpl imp
         this.declarationProvider = declarationProvider;
 
         this.memberScope = new LazyPackageMemberScope(resolveSession, declarationProvider, this);
+
+        declarationProvider.onPackageFragmentCreated(this, resolveSession.getTrace());
     }
 
     @NotNull

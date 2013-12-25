@@ -23,10 +23,12 @@ import com.intellij.util.Function;
 import com.intellij.util.containers.ContainerUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.jet.asJava.LightClassGenerationSupport;
+import org.jetbrains.jet.lang.descriptors.PackageFragmentDescriptor;
 import org.jetbrains.jet.lang.psi.JetFile;
 import org.jetbrains.jet.lang.psi.JetNamedFunction;
 import org.jetbrains.jet.lang.psi.JetProperty;
 import org.jetbrains.jet.lang.psi.JetPsiUtil;
+import org.jetbrains.jet.lang.resolve.BindingTrace;
 import org.jetbrains.jet.lang.resolve.lazy.declarations.PackageMemberDeclarationProvider;
 import org.jetbrains.jet.lang.resolve.name.FqName;
 import org.jetbrains.jet.lang.resolve.name.Name;
@@ -95,5 +97,10 @@ public class StubPackageMemberDeclarationProvider extends AbstractStubDeclaratio
                 return JetPsiUtil.getPackageReference(file, QualifiedNamesUtil.numberOfSegments(fqName) - 1);
             }
         });
+    }
+
+    @Override
+    public void onPackageFragmentCreated(@NotNull PackageFragmentDescriptor packageFragmentDescriptor, @NotNull BindingTrace trace) {
+        // TODO:
     }
 }

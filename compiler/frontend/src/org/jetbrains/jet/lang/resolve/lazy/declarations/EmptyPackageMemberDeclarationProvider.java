@@ -18,10 +18,12 @@ package org.jetbrains.jet.lang.resolve.lazy.declarations;
 
 import com.intellij.psi.NavigatablePsiElement;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.jet.lang.descriptors.PackageFragmentDescriptor;
 import org.jetbrains.jet.lang.psi.JetClassOrObject;
 import org.jetbrains.jet.lang.psi.JetDeclaration;
 import org.jetbrains.jet.lang.psi.JetNamedFunction;
 import org.jetbrains.jet.lang.psi.JetProperty;
+import org.jetbrains.jet.lang.resolve.BindingTrace;
 import org.jetbrains.jet.lang.resolve.name.FqName;
 import org.jetbrains.jet.lang.resolve.name.Name;
 
@@ -49,6 +51,11 @@ public class EmptyPackageMemberDeclarationProvider implements PackageMemberDecla
     @Override
     public Collection<NavigatablePsiElement> getPackageDeclarations(FqName fqName) {
         return Collections.emptyList();
+    }
+
+    @Override
+    public void onPackageFragmentCreated(@NotNull PackageFragmentDescriptor packageFragmentDescriptor, @NotNull BindingTrace trace) {
+        // Do nothing
     }
 
     @Override

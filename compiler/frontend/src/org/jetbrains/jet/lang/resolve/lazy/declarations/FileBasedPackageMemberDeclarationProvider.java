@@ -19,8 +19,11 @@ package org.jetbrains.jet.lang.resolve.lazy.declarations;
 import com.intellij.psi.NavigatablePsiElement;
 import jet.Function0;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.jet.lang.descriptors.PackageFragmentDescriptor;
 import org.jetbrains.jet.lang.psi.JetDeclaration;
 import org.jetbrains.jet.lang.psi.JetFile;
+import org.jetbrains.jet.lang.resolve.BindingContext;
+import org.jetbrains.jet.lang.resolve.BindingTrace;
 import org.jetbrains.jet.lang.resolve.name.FqName;
 import org.jetbrains.jet.lang.resolve.name.Name;
 import org.jetbrains.jet.storage.NotNullLazyValue;
@@ -78,6 +81,13 @@ public class FileBasedPackageMemberDeclarationProvider extends AbstractPsiBasedD
     @Override
     public Collection<NavigatablePsiElement> getPackageDeclarations(FqName fqName) {
         return factory.getPackageDeclarations(fqName);
+    }
+
+    @Override
+    public void onPackageFragmentCreated(@NotNull PackageFragmentDescriptor packageFragmentDescriptor, @NotNull BindingTrace trace) {
+        for (JetFile file : packageFiles) {
+            trace.record(BindingContext.FILE_TO_PACKAGE_FRAGMENT, file, packageFragmentDescriptor);
+        }
     }
 
     @Override

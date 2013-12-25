@@ -32,14 +32,13 @@ import org.jetbrains.jet.lang.types.TypeSubstitutor;
 
 import java.util.Collections;
 
-public class LazyPackageDescriptor extends DeclarationDescriptorImpl implements LazyDescriptor, PackageFragmentDescriptor {
-    private final ResolveSession resolveSession;
+public class LazyPackageFragmentDescriptor extends DeclarationDescriptorImpl implements LazyDescriptor, PackageFragmentDescriptor {    private final ResolveSession resolveSession;
     private final ModuleDescriptor module;
     private final JetScope memberScope;
     private final FqName fqName;
     private final PackageMemberDeclarationProvider declarationProvider;
 
-    public LazyPackageDescriptor(
+    public LazyPackageFragmentDescriptor(
             @NotNull ModuleDescriptor module,
             @NotNull FqName fqName,
             @NotNull ResolveSession resolveSession,

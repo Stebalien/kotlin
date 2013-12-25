@@ -38,7 +38,7 @@ import org.jetbrains.jet.lang.resolve.lazy.LazyDescriptor;
 import org.jetbrains.jet.lang.resolve.lazy.ResolveSession;
 import org.jetbrains.jet.lang.resolve.lazy.ScopeProvider;
 import org.jetbrains.jet.lang.resolve.lazy.descriptors.LazyClassDescriptor;
-import org.jetbrains.jet.lang.resolve.lazy.descriptors.LazyPackageDescriptor;
+import org.jetbrains.jet.lang.resolve.lazy.descriptors.LazyPackageFragmentDescriptor;
 import org.jetbrains.jet.lang.resolve.lazy.storage.LazyResolveStorageManager;
 import org.jetbrains.jet.lang.resolve.name.FqName;
 import org.jetbrains.jet.lang.resolve.name.Name;
@@ -355,8 +355,8 @@ public class ResolveElementCache {
                             .lookupDescriptorsForUserType(qualifier, getExpressionResolutionScope(resolveSession, expression), trace);
 
                     for (DeclarationDescriptor descriptor : descriptors) {
-                        if (descriptor instanceof LazyPackageDescriptor) {
-                            return ((LazyPackageDescriptor) descriptor).getMemberScope();
+                        if (descriptor instanceof LazyPackageFragmentDescriptor) {
+                            return ((LazyPackageFragmentDescriptor) descriptor).getMemberScope();
                         }
                     }
                 }

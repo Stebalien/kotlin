@@ -37,14 +37,13 @@ import org.jetbrains.jet.lang.resolve.lazy.data.JetClassLikeInfo;
 import org.jetbrains.jet.lang.resolve.lazy.declarations.DeclarationProviderFactory;
 import org.jetbrains.jet.lang.resolve.lazy.declarations.PackageMemberDeclarationProvider;
 import org.jetbrains.jet.lang.resolve.lazy.descriptors.LazyClassDescriptor;
-import org.jetbrains.jet.lang.resolve.lazy.descriptors.LazyPackageDescriptor;
+import org.jetbrains.jet.lang.resolve.lazy.descriptors.LazyPackageFragmentDescriptor;
 import org.jetbrains.jet.lang.resolve.lazy.storage.LazyResolveStorageManager;
 import org.jetbrains.jet.lang.resolve.name.FqName;
 import org.jetbrains.jet.lang.resolve.name.FqNameUnsafe;
 import org.jetbrains.jet.lang.resolve.name.Name;
 import org.jetbrains.jet.lang.resolve.name.SpecialNames;
 import org.jetbrains.jet.lang.resolve.scopes.JetScope;
-import org.jetbrains.jet.lang.types.lang.KotlinBuiltIns;
 import org.jetbrains.jet.storage.MemoizedFunctionToNullable;
 
 import java.util.*;
@@ -74,7 +73,7 @@ public class ResolveSession implements KotlinCodeAnalyzer {
 
     private final Function<FqName, Name> classifierAliases;
 
-    private final MemoizedFunctionToNullable<FqName, LazyPackageDescriptor> packages;
+    private final MemoizedFunctionToNullable<FqName, LazyPackageFragmentDescriptor> packages;
     private final PackageFragmentProvider packageFragmentProvider;
 
     public ResolveSession(
@@ -121,10 +120,10 @@ public class ResolveSession implements KotlinCodeAnalyzer {
         this.injector = new InjectorForLazyResolve(project, this, rootDescriptor);
         this.module = rootDescriptor;
 
-        this.packages = storageManager.createMemoizedFunctionWithNullableValues(new MemoizedFunctionToNullable<FqName, LazyPackageDescriptor>() {
+        this.packages = storageManager.createMemoizedFunctionWithNullableValues(new MemoizedFunctionToNullable<FqName, LazyPackageFragmentDescriptor>() {
             @Nullable
             @Override
-            public LazyPackageDescriptor invoke(FqName fqName) {
+            public LazyPackageFragmentDescriptor invoke(FqName fqName) {
                 return createPackage(fqName);
             }
         });
@@ -141,7 +140,7 @@ public class ResolveSession implements KotlinCodeAnalyzer {
             @NotNull
             @Override
             public Collection<FqName> getSubPackagesOf(@NotNull FqName fqName) {
-                LazyPackageDescriptor packageDescriptor = getPackageFragment(fqName);
+                LazyPackageFragmentDescriptor packageDescriptor = getPackageFragment(fqName);
                 if (packageDescriptor == null) {
                     return Collections.emptyList();
                 }
@@ -157,12 +156,12 @@ public class ResolveSession implements KotlinCodeAnalyzer {
     }
 
     @Nullable
-    public LazyPackageDescriptor getPackageFragment(@NotNull FqName fqName) {
+    public LazyPackageFragmentDescriptor getPackageFragment(@NotNull FqName fqName) {
         return packages.invoke(fqName);
     }
 
     @Nullable
-    private LazyPackageDescriptor createPackage(FqName fqName) {
+    private LazyPackageFragmentDescriptor createPackage(FqName fqName) {
         if (!fqName.isRoot() && getPackageFragment(fqName.parent()) == null) {
             return null;
         }
@@ -170,7 +169,8 @@ public class ResolveSession implements KotlinCodeAnalyzer {
         if (provider == null) {
             return null;
         }
-        return new LazyPackageDescriptor(module, fqName, this, provider);
+
+        return new LazyPackageFragmentDescriptor(module, fqName, this, provider);
     }
 
     @NotNull
@@ -381,18 +381,18 @@ public class ResolveSession implements KotlinCodeAnalyzer {
     }
 
     @NotNull
-    private List<LazyPackageDescriptor> getAllPackages() {
-        return collectAllPackages(Lists.<LazyPackageDescriptor>newArrayList(), getPackageFragment(FqName.ROOT));
+    private List<LazyPackageFragmentDescriptor> getAllPackages() {
+        return collectAllPackages(Lists.<LazyPackageFragmentDescriptor>newArrayList(), getPackageFragment(FqName.ROOT));
     }
 
     @NotNull
-    private List<LazyPackageDescriptor> collectAllPackages(
-            @NotNull List<LazyPackageDescriptor> result,
-            @NotNull LazyPackageDescriptor current
+    private List<LazyPackageFragmentDescriptor> collectAllPackages(
+            @NotNull List<LazyPackageFragmentDescriptor> result,
+            @NotNull LazyPackageFragmentDescriptor current
     ) {
         result.add(current);
         for (FqName subPackage : packageFragmentProvider.getSubPackagesOf(current.getFqName())) {
-            LazyPackageDescriptor fragment = getPackageFragment(subPackage);
+            LazyPackageFragmentDescriptor fragment = getPackageFragment(subPackage);
             assert fragment != null : "Couldn't find fragment for " + subPackage;
             collectAllPackages(result, fragment);
         }
@@ -401,7 +401,7 @@ public class ResolveSession implements KotlinCodeAnalyzer {
 
     @Override
     public void forceResolveAll() {
-        for (LazyPackageDescriptor lazyPackage : getAllPackages()) {
+        for (LazyPackageFragmentDescriptor lazyPackage : getAllPackages()) {
             ForceResolveUtil.forceResolveAllContents(lazyPackage);
         }
     }

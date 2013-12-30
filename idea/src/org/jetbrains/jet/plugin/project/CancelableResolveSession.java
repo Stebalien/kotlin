@@ -80,7 +80,14 @@ public class CancelableResolveSession implements KotlinCodeAnalyzer, Modificatio
         return computableWithProcessingCancel(new Computable<ClassDescriptor>() {
             @Override
             public ClassDescriptor compute() {
-                return resolveSession.getClassDescriptor(classOrObject);
+                BindingContext context = resolveElementCache.resolveToElement(classOrObject);
+
+                DeclarationDescriptor declaration = context.get(BindingContext.DECLARATION_TO_DESCRIPTOR, classOrObject);
+
+                if (declaration == null) {
+                    throw new IllegalArgumentException("Could not find a classifier for " + classOrObject + " " + classOrObject.getText());
+                }
+                return (ClassDescriptor) declaration;
             }
         });
     }

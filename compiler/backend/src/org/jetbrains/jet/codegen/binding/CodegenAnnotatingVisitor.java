@@ -19,6 +19,7 @@ package org.jetbrains.jet.codegen.binding;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.tree.IElementType;
 import com.intellij.psi.tree.TokenSet;
+import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.util.containers.Stack;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -171,7 +172,9 @@ class CodegenAnnotatingVisitor extends JetVisitorVoid {
     @Override
     public void visitClassObject(@NotNull JetClassObject classObject) {
         ClassDescriptor classDescriptor = bindingContext.get(CLASS, classObject.getObjectDeclaration());
-        assert classDescriptor != null;
+
+        assert classDescriptor != null : String.format("No class found in binding context for: \n---\n%s\n---\n",
+                                                       JetPsiUtil.getElementTextWithContext(classObject));
 
         String name = peekFromStack(nameStack) + JvmAbi.CLASS_OBJECT_SUFFIX;
         recordClosure(classObject, classDescriptor, name);

@@ -118,6 +118,14 @@ public class IDELightClassGenerationSupport extends LightClassGenerationSupport 
         try {
             if (USE_LAZY) {
                 CancelableResolveSession session = AnalyzerFacadeWithCache.getLazyResolveSessionForFile((JetFile) classOrObject.getContainingFile());
+
+                if (JetPsiUtil.isLocal(classOrObject)) {
+                    BindingContext bindingContext = session.resolveToElement(classOrObject);
+                    forceResolveAllContents(session.getClassDescriptor(classOrObject));
+
+                    return new LightClassConstructionContext(bindingContext, null);
+                }
+
                 forceResolveAllContents(session.getClassDescriptor(classOrObject));
                 return new LightClassConstructionContext(session.getBindingContext(), null);
             }

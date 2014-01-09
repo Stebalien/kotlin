@@ -23,9 +23,6 @@ import com.intellij.psi.search.GlobalSearchScope;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.jet.lang.resolve.name.FqName;
 
-/**
- * TODO: make more accurate wrapper
- */
 public class JetLightPackage extends PsiPackageImpl {
 
     private final FqName fqName;

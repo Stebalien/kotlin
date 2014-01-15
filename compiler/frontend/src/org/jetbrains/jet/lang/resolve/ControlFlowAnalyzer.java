@@ -46,11 +46,21 @@ public class ControlFlowAnalyzer {
     public void process(@NotNull BodiesResolveContext bodiesResolveContext) {
         for (JetFile file : bodiesResolveContext.getFiles()) {
             if (!bodiesResolveContext.completeAnalysisNeeded(file)) continue;
-            checkDeclarationContainer(file);
+            try {
+                checkDeclarationContainer(file);
+            }
+            catch (OutOfMemoryError e) {
+                throw new Error("Out of memory while analyzing file " + file, e);
+            }
         }
         for (JetClassOrObject aClass : bodiesResolveContext.getClasses().keySet()) {
             if (!bodiesResolveContext.completeAnalysisNeeded(aClass)) continue;
-            checkDeclarationContainer(aClass);
+            try {
+                checkDeclarationContainer(aClass);
+            }
+            catch (OutOfMemoryError e) {
+                throw new Error("Out of memory while analyzing class " + aClass.getName() + ":\n" + aClass.getText(), e);
+            }
         }
         for (Map.Entry<JetNamedFunction, SimpleFunctionDescriptor> entry : bodiesResolveContext.getFunctions().entrySet()) {
             JetNamedFunction function = entry.getKey();

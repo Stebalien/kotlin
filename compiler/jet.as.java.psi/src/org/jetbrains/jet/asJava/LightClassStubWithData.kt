@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2013 JetBrains s.r.o.
+ * Copyright 2010-2014 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,7 +43,7 @@ data class InnerKotlinClassLightClassData(
 ): LightClassDataForKotlinClass
 
 data class OutermostKotlinClassLightClassData(
-        override val javaFileStub: PsiJavaFileStub
+        override val javaFileStub: PsiJavaFileStub,
         override val jvmInternalName: String,
         override val classOrObject: JetClassOrObject,
         override val descriptor: ClassDescriptor?,

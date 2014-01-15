@@ -124,9 +124,7 @@ public class FloatProgression(
         return java.lang.Float.compare(start, that.start) == 0 && java.lang.Float.compare(end, that.end) == 0 && java.lang.Float.compare(increment, that.increment) == 0
     }
 
-    fun hashCode() = (31 * (31 * (if (start != 0.0f) java.lang.Float.floatToIntBits(start) else 0) +
-        (if (end != 0.0f) java.lang.Float.floatToIntBits(end) else 0)) + 
-        (if (increment != 0.0f) java.lang.Float.floatToIntBits(increment) else 0)).toInt()
+    fun hashCode() = 31 * (31 * java.lang.Float.floatToIntBits(start) + java.lang.Float.floatToIntBits(end)) + java.lang.Float.floatToIntBits(increment)
 
     fun toString() = if (increment > 0) "$start..$end step $increment" else "$start downTo $end step ${-increment}"
 }
@@ -149,11 +147,11 @@ public class DoubleProgression(
     }
 
     fun hashCode(): Int {
-        var temp = if (start != 0.0) java.lang.Double.doubleToLongBits(start) else 0L
+        var temp = java.lang.Double.doubleToLongBits(start)
         var result = (temp xor (temp ushr 32))
-        temp = if (end != 0.0) java.lang.Double.doubleToLongBits(end) else 0L
+        temp = java.lang.Double.doubleToLongBits(end)
         result = 31 * result + (temp xor (temp ushr 32))
-        temp = if (increment != 0.0) java.lang.Double.doubleToLongBits(increment) else 0L
+        temp = java.lang.Double.doubleToLongBits(increment)
         return (31 * result + (temp xor (temp ushr 32))).toInt()
     }
 

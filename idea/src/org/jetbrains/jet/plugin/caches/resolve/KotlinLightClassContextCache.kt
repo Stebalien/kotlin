@@ -74,5 +74,4 @@ class KotlinLightClassContextCache(val project: Project) {
 
         return KotlinCacheManager.getInstance(project).getPossiblyIncompleteDeclarationsForLightClassGeneration().getBindingContext()
     }
-
 }

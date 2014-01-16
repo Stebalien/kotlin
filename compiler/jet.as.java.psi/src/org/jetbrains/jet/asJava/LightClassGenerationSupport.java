@@ -41,10 +41,11 @@ public abstract class LightClassGenerationSupport {
     @NotNull
     public abstract LightClassConstructionContext getContextForClassOrObject(@NotNull JetClassOrObject classOrObject);
 
+
     @NotNull
     public abstract Collection<JetClassOrObject> findClassOrObjectDeclarations(@NotNull FqName fqName, @NotNull GlobalSearchScope searchScope);
 
-    /*
+    /**
      * Finds files whose package declaration is exactly {@code fqName}. For example, if a file declares
      *     package a.b.c
      * it will not be returned for fqName "a.b"
@@ -54,7 +55,9 @@ public abstract class LightClassGenerationSupport {
     @NotNull
     public abstract Collection<JetFile> findFilesForPackage(@NotNull FqName fqName, @NotNull GlobalSearchScope searchScope);
 
-    // Returns only immediately declared classes/objects, package classes are not included (they have no declarations)
+    /**
+     * Returns only immediately declared classes/objects, package classes are not included (they have no declarations)
+     */
     @NotNull
     public abstract Collection<JetClassOrObject> findClassOrObjectDeclarationsInPackage(
             @NotNull FqName packageFqName,
@@ -64,7 +67,7 @@ public abstract class LightClassGenerationSupport {
     public abstract boolean packageExists(@NotNull FqName fqName, @NotNull GlobalSearchScope scope);
 
     @NotNull
-    public abstract Collection<FqName> getSubPackages(@NotNull FqName fqn, @NotNull GlobalSearchScope scope);
+    public abstract Collection<FqName> getSubPackages(@NotNull FqName fqName, @NotNull GlobalSearchScope scope);
 
     @Nullable
     public abstract PsiClass getPsiClass(@NotNull JetClassOrObject classOrObject);

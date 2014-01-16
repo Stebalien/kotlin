@@ -64,8 +64,6 @@ import java.util.List;
 import static org.jetbrains.jet.lexer.JetTokens.*;
 
 public class KotlinLightClassForExplicitDeclaration extends KotlinWrappingLightClass implements JetJavaMirrorMarker {
-    private final static Key<CachedValue<OutermostKotlinClassLightClassData>> JAVA_API_STUB = Key.create("JAVA_API_STUB");
-
     @Nullable
     public static KotlinLightClassForExplicitDeclaration create(@NotNull PsiManager manager, @NotNull JetClassOrObject classOrObject) {
         if (LightClassUtil.belongsToKotlinBuiltIns((JetFile) classOrObject.getContainingFile())) {
@@ -93,6 +91,7 @@ public class KotlinLightClassForExplicitDeclaration extends KotlinWrappingLightC
 
     private final FqName classFqName; // FqName of (possibly inner) class
     protected final JetClassOrObject classOrObject;
+    private final LightClassDataProvider<OutermostKotlinClassLightClassData> lightClassDataProvider;
     private PsiClass delegate;
 
     private final NullableLazyValue<PsiElement> parent = new NullableLazyValue<PsiElement>() {
@@ -208,6 +207,7 @@ public class KotlinLightClassForExplicitDeclaration extends KotlinWrappingLightC
         super(manager, JetLanguage.INSTANCE);
         this.classFqName = name;
         this.classOrObject = classOrObject;
+        this.lightClassDataProvider = LightClassDataProviderImpl.createForDeclaredClass(getOutermostClassOrObject(classOrObject));
     }
 
     @NotNull
@@ -253,30 +253,13 @@ public class KotlinLightClassForExplicitDeclaration extends KotlinWrappingLightC
 
     @Nullable
     protected final ClassDescriptor getDescriptor() {
-        LightClassDataForKotlinClass data = getLightClassDataExactly(classOrObject);
+        LightClassDataForKotlinClass data = getLightClassData();
         return data != null ? data.getDescriptor() : null;
     }
 
     @NotNull
     private OutermostKotlinClassLightClassData getLightClassData() {
-        return getLightClassData(classOrObject);
-    }
-
-    @NotNull
-    private static OutermostKotlinClassLightClassData getLightClassData(JetClassOrObject classOrObject) {
-        JetClassOrObject outermostClassOrObject = getOutermostClassOrObject(classOrObject);
-        return CachedValuesManager.getManager(classOrObject.getProject()).getCachedValue(
-                outermostClassOrObject,
-                JAVA_API_STUB,
-                KotlinJavaFileStubProvider.createForDeclaredClass(outermostClassOrObject),
-                /*trackValue = */false
-        );
-    }
-
-    @Nullable
-    private static LightClassDataForKotlinClass getLightClassDataExactly(JetClassOrObject classOrObject) {
-        OutermostKotlinClassLightClassData data = getLightClassData(classOrObject);
-        return data.getClassOrObject().equals(classOrObject) ? data : data.getAllInnerClasses().get(classOrObject);
+        return lightClassDataProvider.compute();
     }
 
     @NotNull

@@ -70,6 +70,13 @@ class KotlinLightClassForAnonymousDeclaration extends KotlinLightClassForExplici
         return DescriptorUtils.getFqName(superClassDescriptor).asString();
     }
 
+    @Nullable
+    private static LightClassDataForKotlinClass getLightClassDataExactly(JetClassOrObject classOrObject) {
+        OutermostKotlinClassLightClassData data = getLightClassData(classOrObject);
+        return data.getClassOrObject().equals(classOrObject) ? data : data.getAllInnerClasses().get(classOrObject);
+    }
+
+
     @NotNull
     @Override
     public synchronized PsiClassType getBaseClassType() {

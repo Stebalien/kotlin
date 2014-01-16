@@ -31,7 +31,9 @@ import com.intellij.psi.impl.java.stubs.impl.PsiJavaFileStubImpl;
 import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.psi.stubs.PsiClassHolderFileStub;
 import com.intellij.psi.stubs.StubElement;
+import com.intellij.psi.util.CachedValue;
 import com.intellij.psi.util.CachedValueProvider;
+import com.intellij.psi.util.CachedValuesManager;
 import com.intellij.psi.util.PsiModificationTracker;
 import com.intellij.testFramework.LightVirtualFile;
 import com.intellij.util.containers.ContainerUtil;
@@ -56,15 +58,14 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 
-public class KotlinJavaFileStubProvider<T extends WithFileStub> implements CachedValueProvider<T> {
-
+public class LightClassDataProviderImpl<T extends WithFileStub> implements LightClassDataProvider<T> {
     @NotNull
-    public static KotlinJavaFileStubProvider<KotlinPackageLightClassData> createForPackageClass(
+    public static LightClassDataProvider<KotlinPackageLightClassData> createForPackageClass(
             @NotNull final Project project,
             @NotNull final FqName packageFqName,
             @NotNull final GlobalSearchScope searchScope
     ) {
-        return new KotlinJavaFileStubProvider<KotlinPackageLightClassData>(
+        return new LightClassDataProviderImpl<KotlinPackageLightClassData>(
                 project,
                 false,
                 new StubGenerationStrategy.NoDeclaredClasses<KotlinPackageLightClassData>() {
@@ -105,8 +106,8 @@ public class KotlinJavaFileStubProvider<T extends WithFileStub> implements Cache
     }
 
     @NotNull
-    public static KotlinJavaFileStubProvider<OutermostKotlinClassLightClassData> createForDeclaredClass(@NotNull final JetClassOrObject classOrObject) {
-        return new KotlinJavaFileStubProvider<OutermostKotlinClassLightClassData>(
+    public static LightClassDataProvider<OutermostKotlinClassLightClassData> createForDeclaredClass(@NotNull final JetClassOrObject classOrObject) {
+        return new LightClassDataProviderImpl<OutermostKotlinClassLightClassData>(
                 classOrObject.getProject(),
                 JetPsiUtil.isLocal(classOrObject),
                 new StubGenerationStrategy.WithDeclaredClasses<OutermostKotlinClassLightClassData>() {
@@ -181,13 +182,15 @@ public class KotlinJavaFileStubProvider<T extends WithFileStub> implements Cache
         );
     }
 
-    private static final Logger LOG = Logger.getInstance(KotlinJavaFileStubProvider.class);
+
+    private static final Logger LOG = Logger.getInstance(LightClassDataProviderImpl.class);
 
     private final Project project;
     private final StubGenerationStrategy<T> stubGenerationStrategy;
     private final boolean local;
+    private final CachedValue<T> cachedLightClassData;
 
-    private KotlinJavaFileStubProvider(
+    private LightClassDataProviderImpl(
             @NotNull Project project,
             boolean local,
             @NotNull StubGenerationStrategy<T> stubGenerationStrategy
@@ -195,11 +198,17 @@ public class KotlinJavaFileStubProvider<T extends WithFileStub> implements Cache
         this.project = project;
         this.stubGenerationStrategy = stubGenerationStrategy;
         this.local = local;
+        this.cachedLightClassData = CachedValuesManager.getManager(project).createCachedValue(new CachedValueProvider<T>() {
+            @Nullable
+            @Override
+            public Result<T> compute() {
+                return doCompute();
+            }
+        }, /*trackValue = */false);
     }
 
-    @Nullable
-    @Override
-    public Result<T> compute() {
+    @NotNull
+    private CachedValueProvider.Result<T> doCompute() {
         FqName packageFqName = stubGenerationStrategy.getPackageFqName();
         Collection<JetFile> files = stubGenerationStrategy.getFiles();
 
@@ -246,7 +255,7 @@ public class KotlinJavaFileStubProvider<T extends WithFileStub> implements Cache
             throw e;
         }
 
-        return Result.create(
+        return CachedValueProvider.Result.create(
                 stubGenerationStrategy.createLightClassData(javaFileStub, bindingContext),
                 local ? PsiModificationTracker.MODIFICATION_COUNT : PsiModificationTracker.OUT_OF_CODE_BLOCK_MODIFICATION_COUNT
         );
@@ -304,6 +313,13 @@ public class KotlinJavaFileStubProvider<T extends WithFileStub> implements Cache
                 "built-ins dir URL is " + LightClassUtil.getBuiltInsDirUrl() + "\n" +
                 "System: " + SystemInfo.OS_NAME + " " + SystemInfo.OS_VERSION + " Java Runtime: " + SystemInfo.JAVA_RUNTIME_VERSION,
                 cause);
+    }
+
+    @NotNull
+    @Nullable
+    @Override
+    public T compute() {
+        return cachedLightClassData.getValue();
     }
 
     private interface StubGenerationStrategy<T extends WithFileStub> {

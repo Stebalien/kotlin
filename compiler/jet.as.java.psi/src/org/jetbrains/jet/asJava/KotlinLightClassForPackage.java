@@ -25,8 +25,6 @@ import com.intellij.psi.impl.light.LightEmptyImplementsList;
 import com.intellij.psi.impl.light.LightModifierList;
 import com.intellij.psi.javadoc.PsiDocComment;
 import com.intellij.psi.search.GlobalSearchScope;
-import com.intellij.psi.util.CachedValue;
-import com.intellij.psi.util.CachedValuesManager;
 import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -47,7 +45,7 @@ public class KotlinLightClassForPackage extends KotlinWrappingLightClass impleme
     private final GlobalSearchScope searchScope;
     private final Collection<JetFile> files;
     private final int hashCode;
-    private final CachedValue<KotlinPackageLightClassData> javaFileStub;
+    private final LightClassDataProvider<KotlinPackageLightClassData> lightClassDataProvider;
     private final PsiModifierList modifierList;
     private final LightEmptyImplementsList implementsList;
 
@@ -66,9 +64,7 @@ public class KotlinLightClassForPackage extends KotlinWrappingLightClass impleme
         assert !files.isEmpty() : "No files for package " + packageFqName;
         this.files = Sets.newHashSet(files); // needed for hashCode
         this.hashCode = computeHashCode();
-        KotlinJavaFileStubProvider<KotlinPackageLightClassData> stubProvider =
-                KotlinJavaFileStubProvider.createForPackageClass(getProject(), packageFqName, searchScope);
-        this.javaFileStub = CachedValuesManager.getManager(getProject()).createCachedValue(stubProvider, /*trackValue = */false);
+        this.lightClassDataProvider = LightClassDataProviderImpl.createForPackageClass(getProject(), packageFqName, searchScope);
     }
 
     @Nullable
@@ -265,7 +261,7 @@ public class KotlinLightClassForPackage extends KotlinWrappingLightClass impleme
     @NotNull
     @Override
     public PsiClass getDelegate() {
-        PsiClass psiClass = LightClassUtil.findClass(packageClassFqName, javaFileStub.getValue().getJavaFileStub());
+        PsiClass psiClass = LightClassUtil.findClass(packageClassFqName, lightClassDataProvider.compute().getJavaFileStub());
         if (psiClass == null) {
             throw new IllegalStateException("Package class was not found " + packageFqName);
         }

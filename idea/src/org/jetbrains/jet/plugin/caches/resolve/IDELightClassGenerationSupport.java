@@ -89,12 +89,14 @@ public class IDELightClassGenerationSupport extends LightClassGenerationSupport 
         if (files.isEmpty()) {
             return new LightClassConstructionContext(BindingContext.EMPTY, null);
         }
+
         List<JetFile> sortedFiles = new ArrayList<JetFile>(files);
         Collections.sort(sortedFiles, jetFileComparator);
 
         Profiler p = Profiler.create((USE_LAZY ? "lazy" : "eager") + " analyze", LOG).start();
         try {
             if (USE_LAZY) {
+                // TODO: Why only first file???
                 CancelableResolveSession session = AnalyzerFacadeWithCache.getLazyResolveSessionForFile(sortedFiles.get(0));
                 forceResolvePackageDeclarations(files, session);
                 return new LightClassConstructionContext(session.getBindingContext(), null);
@@ -172,8 +174,12 @@ public class IDELightClassGenerationSupport extends LightClassGenerationSupport 
                     }
                 }
                 else if (declaration instanceof JetClassOrObject) {
-                    // Do nothing: we are not interested in classes
+                    ClassDescriptor descriptor = session.getClassDescriptor((JetClassOrObject) declaration);
+                    forceResolveAllContents(descriptor);
                 }
+                //else if (declaration instanceof JetClassOrObject) {
+                //    // Do nothing: we are not interested in classes
+                //}
                 else {
                     LOG.error("Unsupported declaration kind: " + declaration + " in file " + file.getName() + "\n" + file.getText());
                 }
@@ -215,9 +221,7 @@ public class IDELightClassGenerationSupport extends LightClassGenerationSupport 
     }
 
     @Override
-    public boolean packageExists(
-            @NotNull FqName fqName, @NotNull GlobalSearchScope scope
-    ) {
+    public boolean packageExists(@NotNull FqName fqName, @NotNull GlobalSearchScope scope) {
         return !JetAllPackagesIndex.getInstance().get(fqName.asString(), project, kotlinSources(scope)).isEmpty();
     }
 
@@ -250,7 +254,7 @@ public class IDELightClassGenerationSupport extends LightClassGenerationSupport 
             return JetSourceNavigationHelper.getOriginalClass(classOrObject);
         }
 
-        return  KotlinLightClassForExplicitDeclaration.create(classOrObject.getManager(), classOrObject);
+        return KotlinLightClassForExplicitDeclaration.create(classOrObject.getManager(), classOrObject);
     }
 
     @NotNull

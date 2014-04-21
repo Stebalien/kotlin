@@ -75,6 +75,8 @@ import java.awt.Component
 import java.util.Properties
 import org.jetbrains.jet.plugin.caches.resolve.getAnalysisResults
 import org.jetbrains.jet.plugin.caches.resolve.getBindingContext
+import org.jetbrains.jet.lang.types.expressions.OperatorConventions
+import org.jetbrains.jet.lexer.JetToken
 
 private val TYPE_PARAMETER_LIST_VARIABLE_NAME = "typeParameterList"
 private val TEMPLATE_FROM_USAGE_FUNCTION_BODY = "New Kotlin Function Body.kt"
@@ -219,7 +221,8 @@ private class TypeOrExpressionThereof(private val variance: Variance,
  */
 private class Parameter(
         public val theType: TypeOrExpressionThereof,
-        public val preferredName: String? = null
+        public val preferredName: String? = null,
+        public val isVararg: Boolean = false
 )
 
 /**
@@ -285,8 +288,8 @@ private class ParameterNameExpression(
 /**
  * An <code>Expression</code> for type references.
  */
-private class TypeExpression(public val theType: TypeOrExpressionThereof) : Expression() {
-    private val cachedLookupElements: Array<LookupElement> = theType.typeCandidates!!.map {
+private class TypeExpression(private val typeCandidates: List<TypeCandidate>) : Expression() {
+    private val cachedLookupElements: Array<LookupElement> = typeCandidates.map {
         LookupElementBuilder.create(it, it.renderedType!!)
     }.copyToArray()
 
@@ -300,7 +303,7 @@ private class TypeExpression(public val theType: TypeOrExpressionThereof) : Expr
     override fun calculateLookupItems(context: ExpressionContext?) = cachedLookupElements
 
     public fun getTypeFromSelection(selection: String): JetType? {
-        return theType.typeCandidates!!.firstOrNull { it.renderedType == selection }?.theType
+        return typeCandidates!!.firstOrNull { it.renderedType == selection }?.theType
     }
 }
 
@@ -365,9 +368,16 @@ private fun DeclarationDescriptor.render(
 
 private fun JetType.render(typeParameterNameMap: Map<TypeParameterDescriptor, String>, fq: Boolean): String {
     val arguments = getArguments().map { it.getType().render(typeParameterNameMap, fq) }
-    val typeString = getConstructor().getDeclarationDescriptor()!!.render(typeParameterNameMap, fq)
-    val typeArgumentString = if (arguments.notEmpty) arguments.makeString(", ", "<", ">") else ""
-    return "$typeString$typeArgumentString"
+    if (KotlinBuiltIns.getInstance().isFunctionOrExtensionFunctionType(this)) {
+        val parameterString = arguments.take(arguments.size - 1).makeString(", ")
+        val returnTypeString = arguments.last
+        return "(${parameterString}) -> ${returnTypeString}"
+    }
+    else {
+        val typeString = getConstructor().getDeclarationDescriptor()!!.render(typeParameterNameMap, fq)
+        val typeArgumentString = if (arguments.notEmpty) arguments.makeString(", ", "<", ">") else ""
+        return "$typeString$typeArgumentString"
+    }
 }
 
 private fun JetType.renderShort(typeParameterNameMap: Map<TypeParameterDescriptor, String>) = render(typeParameterNameMap, false)
@@ -504,6 +514,52 @@ private fun JetNamedDeclaration.guessType(context: BindingContext): Array<JetTyp
         return expectedTypes.copyToArray()
     }
 }
+
+private fun JetValueArgumentList.toParameterList() : List<Parameter> {
+    val parameters = ArrayList<Parameter>();
+    var spreadParam: ArrayList<String>? = null
+    for (argument in getArguments()) {
+        val name = argument.getArgumentName()?.getText()
+        val spreadText = argument.getSpreadElement()?.getText()
+        val argumentExpr = argument.getArgumentExpression()
+        if (spreadParam != null) {
+            val spreadParam = spreadParam!!
+            if (name == null) {
+                val argumentText = argumentExpr?.getText() ?: ""
+                if (spreadText != null) {
+                    spreadParam.add("$spreadText$argumentText")
+                }
+                else {
+                    spreadParam.add(0, "$argumentText")
+                }
+                continue;
+            }
+            else {
+                val expr = JetPsiFactory.createExpression(this.getProject(), spreadParam.makeString(", ", "array(", ")"));
+                parameters.add(Parameter(TypeOrExpressionThereof(expr, Variance.INVARIANT), isVararg = true))
+            }
+        }
+        if (spreadText != null) {
+            spreadParam = ArrayList();
+            val argumentText = argumentExpr?.getText() ?: ""
+            spreadParam!!.add("$spreadText$argumentText")
+        }
+        else if (argumentExpr != null) {
+            parameters.add(Parameter(TypeOrExpressionThereof(argumentExpr, Variance.IN_VARIANCE), name))
+        }
+    }
+
+    if (spreadParam != null) {
+        val spreadParam = spreadParam!!
+        val expr = JetPsiFactory.createExpression(this.getProject(), spreadParam.makeString(", ", "array(", ")"));
+        parameters.add(Parameter(TypeOrExpressionThereof(expr, Variance.INVARIANT), isVararg = true))
+    }
+    for (parameter in parameters) {
+        println(parameter.theType.expressionOfType!!.getText())
+    }
+    return parameters;
+}
+
 
 /**
  * Encapsulates a single type substitution of a <code>JetType</code> by another <code>JetType</code>.
@@ -645,7 +701,10 @@ public class CreateFunctionFromUsageFix internal (
 
     private fun createFunctionSkeleton(): JetNamedFunction {
         val project = currentFile.getProject()
-        val parametersString = parameters.indices.map { i -> "p$i: Any" }.makeString(", ")
+        val parametersString = parameters.stream().withIndices().map { pair ->
+            val (i, parameter) = pair
+            if (parameter.isVararg) "vararg p$i: Any" else "p$i: Any"
+        }.makeString(", ")
         val returnTypeString = if (isUnit) "" else ": Any"
         if (isExtension) {
             // create as extension function
@@ -734,6 +793,7 @@ public class CreateFunctionFromUsageFix internal (
 
         allTypeParametersNotInScope.addAll(selectedReceiverType.typeParameters.toList())
 
+        // TODO: vararg
         parameters.stream()
                 .flatMap { it.theType.typeCandidates!!.stream() }
                 .flatMap { it.typeParameters.stream() }
@@ -828,7 +888,7 @@ public class CreateFunctionFromUsageFix internal (
 
     private fun setupReturnTypeTemplate(builder: TemplateBuilder, func: JetNamedFunction): TypeExpression {
         val returnTypeRef = func.getReturnTypeRef()!!
-        val returnTypeExpression = TypeExpression(returnType)
+        val returnTypeExpression = TypeExpression(returnType.typeCandidates!!)
         builder.replaceElement(returnTypeRef, returnTypeExpression)
         return returnTypeExpression
     }
@@ -858,7 +918,17 @@ public class CreateFunctionFromUsageFix internal (
 
         val typeParameters = ArrayList<TypeExpression>()
         for ((parameter, jetParameter) in parameters.zip(jetParameters)) {
-            val parameterTypeExpression = TypeExpression(parameter.theType)
+            val typeCandidates = if (parameter.isVararg) {
+                parameter.theType.typeCandidates!!.map {
+                    it.theType.getArguments().first?.getType() ?: KotlinBuiltIns.getInstance().getAnyType();
+                }.toSet().map {
+                    TypeCandidate(it)
+                }
+            }
+            else {
+                parameter.theType.typeCandidates!!
+            }
+            val parameterTypeExpression = TypeExpression(typeCandidates)
             val parameterTypeRef = jetParameter.getTypeReference()!!
             builder.replaceElement(parameterTypeRef, parameterTypeExpression)
 
@@ -874,7 +944,7 @@ public class CreateFunctionFromUsageFix internal (
 
             // figure out suggested names for each type option
             val parameterTypeToNamesMap = HashMap<String, Array<String>>()
-            parameter.theType.typeCandidates!!.forEach { typeCandidate ->
+            typeCandidates.forEach { typeCandidate ->
                 val suggestedNames = JetNameSuggester.suggestNamesForType(typeCandidate.theType, dummyValidator)
                 parameterTypeToNamesMap[typeCandidate.renderedType!!] = suggestedNames
             }
@@ -896,6 +966,58 @@ public class CreateFunctionFromUsageFix internal (
     }
 
     class object {
+        public fun createCreateUnresolvedFunctionFromUsageFactory(): JetSingleIntentionActionFactory {
+            return object : JetSingleIntentionActionFactory() {
+                override fun createAction(diagnostic: Diagnostic?): IntentionAction? {
+                    val expression = QuickFixUtil.getParentElementOfType(diagnostic, javaClass<JetSimpleNameExpression>()) ?: return null
+                    val outer = expression.getParent() as? JetExpression ?: return null
+                    val receiver = expression.getReceiverExpression() as? JetExpression ?: return null
+                    val name = when (outer) {
+                        is JetOperationExpression -> {
+                            val infix = outer.getOperationReference().getReferencedNameElementType()
+                            when (infix) {
+                                is JetToken -> OperatorConventions.getNameForOperationSymbol(infix)?.getIdentifier()
+                                else -> null
+                            }
+                        }
+                        else -> null
+                    } ?: expression.getReferencedName()
+
+                    val parameters = when (outer) {
+                        is JetBinaryExpression -> {
+                            var param = if (JetPsiUtil.getOperationToken(outer) in OperatorConventions.IN_OPERATIONS) {
+                                outer.getLeft()
+                            }
+                            else {
+                                outer.getRight()
+                            } ?: return null
+                            Collections.singletonList(Parameter(TypeOrExpressionThereof(param, Variance.IN_VARIANCE)))
+                        }
+                        is JetCallExpression -> (outer.getValueArgumentList()?.toParameterList() ?: Collections.emptyList()) + outer.getFunctionLiteralArguments().map {
+                            Parameter(TypeOrExpressionThereof(it, Variance.IN_VARIANCE))
+                        }
+                        is JetUnaryExpression -> Collections.emptyList<Parameter>()
+                        else -> return null
+                    }
+
+                    val receiverType = TypeOrExpressionThereof(receiver, Variance.OUT_VARIANCE)
+                    val returnType = when (outer) {
+                        is JetOperationExpression -> when (JetPsiUtil.getOperationToken(outer)) {
+                            in OperatorConventions.INCREMENT_OPERATIONS -> TypeOrExpressionThereof(receiver, Variance.INVARIANT)
+                            in OperatorConventions.IN_OPERATIONS ->
+                                TypeOrExpressionThereof(KotlinBuiltIns.getInstance().getBooleanType(), Variance.INVARIANT)
+                            in OperatorConventions.COMPARISON_OPERATIONS ->
+                                TypeOrExpressionThereof(KotlinBuiltIns.getInstance().getIntType(), Variance.INVARIANT)
+                            else -> null
+                        }
+                        else -> null
+                    } ?: TypeOrExpressionThereof(expression, Variance.IN_VARIANCE)
+
+                    return CreateFunctionFromUsageFix(outer, receiverType, name, returnType, parameters)
+                }
+            }
+        }
+
         public fun createCreateGetFunctionFromUsageFactory(): JetSingleIntentionActionFactory {
             return object : JetSingleIntentionActionFactory() {
                 override fun createAction(diagnostic: Diagnostic?): IntentionAction? {
